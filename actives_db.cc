@@ -52,7 +52,33 @@ pqxx::result active_history(std::shared_ptr<cp::connection_pool> pool_ptr, std::
 }
 
 pqxx::result user_actives(std::shared_ptr<cp::connection_pool> pool_ptr, int userId) {
+    cp::query get_user_actives("SELECT * FROM usersactives WHERE userId=($1);");
 
+    auto tx = cp::tx(*pool_ptr, get_user_actives);
+
+    pqxx::result restult = get_user_actives(userId);
+
+    return restult;
+}
+
+pqxx::result user_actives(std::shared_ptr<cp::connection_pool> pool_ptr, int userId, int activeId) {
+    cp::query get_user_actives("SELECT * FROM usersactives WHERE userId=($1) and activeId=($2);");
+
+    auto tx = cp::tx(*pool_ptr, get_user_actives);
+
+    pqxx::result restult = get_user_actives(userId, activeId);
+
+    return restult;
+}
+
+pqxx::result user_actives(std::shared_ptr<cp::connection_pool> pool_ptr, int userId, std::string activeTicker) {
+    cp::query get_user_actives("SELECT ua.* FROM usersactives ua JOIN \"active\" a ON ua.activeId = a.activeId WHERE ua.userId=($1) and a.activeTicker=($2);");
+
+    auto tx = cp::tx(*pool_ptr, get_user_actives);
+
+    pqxx::result restult = get_user_actives(userId, activeTicker);
+
+    return restult;
 }
 
 pqxx::result user_history(std::shared_ptr<cp::connection_pool> pool_ptr, int userId) {
