@@ -10,7 +10,6 @@ pqxx::result all_public(std::shared_ptr<cp::connection_pool> pool_ptr) {
     return result;
 }
 
-
 pqxx::result active(std::shared_ptr<cp::connection_pool> pool_ptr, int activeId) {
     cp::query get_active("SELECT * FROM \"active\" WHERE \"ispublic\" AND activeId = ($1);");
 
@@ -88,7 +87,7 @@ pqxx::result user_history(std::shared_ptr<cp::connection_pool> pool_ptr, int use
 
     pqxx::result result = get_active(userId);
 
-    return result;
+    return result; 
 }
 
 pqxx::result user_history(std::shared_ptr<cp::connection_pool> pool_ptr, int userId, int activeId) {
