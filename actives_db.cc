@@ -109,3 +109,19 @@ pqxx::result user_history(std::shared_ptr<cp::connection_pool> pool_ptr, int use
 
     return result;
 }
+
+std::string add_bid(std::shared_ptr<cp::connection_pool> pool_ptr, std::string buy,int userId, int activeId, int bidPrice, int ammount) {
+    cp::query add_bid("insert into  pool (buy, userid, activeid, bidprice, ammount) values (($1), ($2), ($3), ($4), ($5));");
+    try{
+        auto tx = cp::tx(*pool_ptr, add_bid);
+
+        add_bid(buy, userId, activeId, bidPrice, ammount);
+
+        tx.commit();
+
+        return "ok";
+    } catch (const char* error_message){
+        spdlog::error("add_bid error: {}", error_message);
+        return error_message;
+    }
+}
