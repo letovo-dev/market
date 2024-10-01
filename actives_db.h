@@ -42,7 +42,7 @@
 
 #include "../pqxx_cp.h"
 #include <pqxx/pqxx>
-#include "spdlog/spdlog.h"
+// #include "spdlog/spdlog.h"
 
 
 pqxx::result all_public(std::shared_ptr<cp::connection_pool> pool_ptr);
