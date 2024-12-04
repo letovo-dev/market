@@ -2,7 +2,7 @@
 
 void get_actives(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::connection_pool> pool_ptr) {
     // spdlog::info("get_actives enabled");
-    router.get()->http_get("/all_actives", [pool_ptr](auto req, auto){
+    router.get()->http_get("/all_actives", [pool_ptr](auto req, auto) {
         return req->create_response().set_body(cp::serialize(all_public(pool_ptr))).done();
     });
 }

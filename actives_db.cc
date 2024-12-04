@@ -120,7 +120,7 @@ std::string add_bid(std::shared_ptr<cp::connection_pool> pool_ptr, std::string b
         tx.commit();
 
         return "ok";
-    } catch (const char* error_message){
+    } catch (const char* error_message) {
         // spdlog::error("add_bid error: {}", error_message);
         return error_message;
     }
