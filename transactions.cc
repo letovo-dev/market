@@ -14,10 +14,12 @@ namespace transactions {
 
     bool transfer(std::string sender_username, std::string receiver_username, int amount, std::shared_ptr<cp::connection_pool> pool_ptr) {
         int balance = get_balance(sender_username, pool_ptr);
+        bool flag = amount < 0;
         if(auth::is_admin_by_uname(sender_username, pool_ptr)) {
             balance = 999999999;
+            flag = false;
         }
-        if (balance < amount) {
+        if (balance < amount || flag) {
             return false;
         }
         cp::query transfer_dec("UPDATE \"user\" SET balance=balance-($1) WHERE username=($2);");
