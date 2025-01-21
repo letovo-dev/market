@@ -1,13 +1,13 @@
 #include "actives_server.h"
 
-void get_actives(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::connection_pool> pool_ptr) {
+void get_actives(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
     // spdlog::info("get_actives enabled");
     router.get()->http_get("/all_actives", [pool_ptr](auto req, auto) {
         return req->create_response().set_body(cp::serialize(all_public(pool_ptr))).done();
     });
 }
 
-void get_active(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::connection_pool> pool_ptr) {
+void get_active(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
     // spdlog::info("get_active enabled");
     // router -> Get("/active", [pool_ptr](const httplib::Request & req, httplib::Response &res) {
     //     if(!req.get_header_value("id").empty()) {
@@ -21,7 +21,7 @@ void get_active(std::unique_ptr<restinio::router::express_router_t<>>& router, s
     // });
 }
 
-// void get_active_history(std::shared_ptr<httplib::Server> router, std::shared_ptr<cp::connection_pool> pool_ptr) {
+// void get_active_history(std::shared_ptr<httplib::Server> router, std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
 //     spdlog::info("get_active_history enabled");
 //     router -> Get("/activehistory", [pool_ptr](const httplib::Request & req, httplib::Response &res) {
 //         if(!req.get_header_value("id").empty()) {
@@ -35,7 +35,7 @@ void get_active(std::unique_ptr<restinio::router::express_router_t<>>& router, s
 //     });
 // }
 
-// void get_user_actives(std::shared_ptr<httplib::Server> router, std::shared_ptr<cp::connection_pool> pool_ptr) {
+// void get_user_actives(std::shared_ptr<httplib::Server> router, std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
 //     spdlog::info("get_user_actives enabled");
 //     router -> Get("/useractives", [pool_ptr](const httplib::Request & req, httplib::Response &res) {
 //         if(!req.get_header_value("userid").empty()) {
@@ -46,7 +46,7 @@ void get_active(std::unique_ptr<restinio::router::express_router_t<>>& router, s
 //     });
 // }
 
-void post_bid(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::connection_pool> pool_ptr) {
+void post_bid(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
     // spdlog::info("post_bid enabled");
     router.get()->http_post("/add_bid", [pool_ptr](auto req, auto) {
         rapidjson::Document new_body;
@@ -63,7 +63,7 @@ void post_bid(std::unique_ptr<restinio::router::express_router_t<>>& router, std
     });
 }
 
-void enable_all_actives(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::connection_pool> pool_ptr) {
+void enable_all_actives(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
     get_actives(router, pool_ptr);
     get_active(router, pool_ptr);
     // get_active(router, pool_ptr);

@@ -2,17 +2,22 @@
 
 namespace transactions {
 
-    int get_balance(std::string username, std::shared_ptr<cp::connection_pool> pool_ptr){
-        cp::query get_balance("SELECT balance FROM \"user\" WHERE username=($1);");
-        auto tx = cp::tx(*pool_ptr, get_balance);
-        pqxx::result result = get_balance(username);
+    int get_balance(std::string username, std::shared_ptr<cp::ConnectionsManager> pool_ptr){
+        auto con = std::move(pool_ptr->getConnection());
+
+        std::vector<std::string> params = {username};
+
+        pqxx::result result = con->execute_params("SELECT balance FROM \"user\" WHERE username=($1);", params);
+        
+        pool_ptr->returnConnection(std::move(con));
+
         if(result.empty()) {
             return -1;
         }
         return result[0]["balance"].as<int>();
     }
 
-    bool transfer(std::string sender_username, std::string receiver_username, int amount, std::shared_ptr<cp::connection_pool> pool_ptr) {
+    bool transfer(std::string sender_username, std::string receiver_username, int amount, std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
         int balance = get_balance(sender_username, pool_ptr);
         bool flag = amount < 0;
         if(auth::is_admin_by_uname(sender_username, pool_ptr)) {
@@ -22,24 +27,26 @@ namespace transactions {
         if (balance < amount || flag) {
             return false;
         }
-        cp::query transfer_dec("UPDATE \"user\" SET balance=balance-($1) WHERE username=($2);");
-        cp::query transfer_inc("UPDATE \"user\" SET balance=balance+($1) WHERE username=($2);");
-        cp::query add_transaction("INSERT INTO \"transactions\" (sender, receiver, amount) VALUES($1, $2, $3);");
 
-        auto tx = cp::tx(*pool_ptr, transfer_dec, transfer_inc, add_transaction);
+        auto con = std::move(pool_ptr->getConnection());
+        std::vector<std::string> params = {std::to_string(amount), sender_username};
 
-        transfer_dec(amount, sender_username);
-        transfer_inc(amount, receiver_username);
-        add_transaction(sender_username, receiver_username, amount);
+        con->execute_params("UPDATE \"user\" SET balance=balance-($1) WHERE username=($2);", params, true);
+        params[1] = receiver_username;
+        con->execute_params("UPDATE \"user\" SET balance=balance+($1) WHERE username=($2);", params, true);
+        params = {sender_username, receiver_username, std::to_string(amount)};
+        con->execute_params("INSERT INTO \"transactions\" (sender, receiver, amount) VALUES($1, $2, $3);", params, true);
 
-        tx.commit();
+        pool_ptr->returnConnection(std::move(con));
+
         return true;
     }
 
-    pqxx::result get_transactions(std::string username, std::shared_ptr<cp::connection_pool> pool_ptr){
-        cp::query get_transactions("SELECT * FROM \"transactions\" WHERE sender=($1) OR receiver=($1);");
-        auto tx = cp::tx(*pool_ptr, get_transactions);
-        pqxx::result result = get_transactions(username);
+    pqxx::result get_transactions(std::string username, std::shared_ptr<cp::ConnectionsManager> pool_ptr){
+        auto con = std::move(pool_ptr->getConnection());
+        std::vector<std::string> params = {username};
+        pqxx::result result = con->execute_params("SELECT * FROM \"transactions\" WHERE sender=($1) OR receiver=($1);", params);
+        pool_ptr->returnConnection(std::move(con));        
         if(result.empty()) {
             return {};
         }
@@ -48,7 +55,7 @@ namespace transactions {
 }
 
 namespace transactions::server {
-    void transfer(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::connection_pool> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
+    void transfer(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
         router.get()->http_post("/transactions/send", [pool_ptr, logger_ptr](auto req, auto) {
             rapidjson::Document new_body;
             new_body.Parse(req->body().c_str());
@@ -75,7 +82,7 @@ namespace transactions::server {
         });
     }
 
-    void get_balance(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::connection_pool> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
+    void get_balance(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
         router.get()->http_get(R"(/transactions/balance/:token([a-zA-Z0-9]+))", [pool_ptr, logger_ptr](auto req, auto) {
             std::string token = url::get_last_url_arg(req->header().path());
 
@@ -94,7 +101,7 @@ namespace transactions::server {
         });
     }
 
-    void get_transactions(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::connection_pool> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
+    void get_transactions(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
         router.get()->http_get(R"(/transactions/get/:token([a-zA-Z0-9]+))", [pool_ptr, logger_ptr](auto req, auto) {
             std::string token = url::get_last_url_arg(req->header().path());
 
