@@ -87,7 +87,7 @@ pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int 
 
     pqxx::result result = get_active(userId);
 
-    return result; 
+    return result;
 }
 
 pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, int activeId) {
@@ -100,7 +100,7 @@ pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int 
     return result;
 }
 
-pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, std::string activeTicker) {     
+pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, std::string activeTicker) {
     cp::query get_active("SELECT ah.* FROM \"activeHistory\" ah JOIN \"active\" a ON ah.activeId = a.activeId WHERE ah.userId=($1) AND a.activeTicker = ($2);");
 
     auto tx = cp::tx(*pool_ptr, get_active);
@@ -110,9 +110,9 @@ pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int 
     return result;
 }
 
-std::string add_bid(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::string buy,int userId, int activeId, int bidPrice, int ammount) {
+std::string add_bid(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::string buy, int userId, int activeId, int bidPrice, int ammount) {
     cp::query add_bid("insert into  pool (buy, userid, activeid, bidprice, ammount) values (($1), ($2), ($3), ($4), ($5));");
-    try{
+    try {
         auto tx = cp::tx(*pool_ptr, add_bid);
 
         add_bid(buy, userId, activeId, bidPrice, ammount);

@@ -52,7 +52,7 @@ void post_bid(std::unique_ptr<restinio::router::express_router_t<>>& router, std
         rapidjson::Document new_body;
         new_body.Parse(req->body().c_str());
 
-        if(new_body.HasMember("buy") && new_body.HasMember("userid") && new_body.HasMember("activeid") && new_body.HasMember("bidprice") && new_body.HasMember("ammount")) {
+        if (new_body.HasMember("buy") && new_body.HasMember("userid") && new_body.HasMember("activeid") && new_body.HasMember("bidprice") && new_body.HasMember("ammount")) {
             std::string buy = new_body["buy"].GetString(), userId = new_body["userid"].GetString(), activeId = new_body["activeid"].GetString(), bidPrice = new_body["bidprice"].GetString(), ammount = new_body["ammount"].GetString();
             return req->create_response().set_body(add_bid(pool_ptr, buy, stoi(userId), stoi(activeId), stoi(bidPrice), stoi(ammount))).done();
 
