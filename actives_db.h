@@ -44,7 +44,11 @@
 
 #include "../basic/pqxx_cp.h"
 #include <pqxx/pqxx>
-// #include "spdlog/spdlog.h"
+#include <restinio/all.hpp>
+#include "../basic/url_parser.h"
+#include "../basic/auth.h"
+
+
 namespace actives {
     pqxx::result all_public(std::shared_ptr<cp::ConnectionsManager> pool_ptr);
 
@@ -69,4 +73,15 @@ namespace actives {
     pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, std::string activeTicker);
 
     std::string add_bid(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::string buy, int userId, int activeId, int bidPrice, int ammount);
+}
+
+namespace actives::server {
+    void all_public(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr);
+
+    void active(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr);
+
+    void history(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr);
+
+    void add_bid(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr);
+
 }
