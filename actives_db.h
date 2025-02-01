@@ -42,30 +42,31 @@
  *   Adds a bid for a specific active by a user. Can be a buy or sell bid.
  */
 
-#include "../pqxx_cp.h"
+#include "../basic/pqxx_cp.h"
 #include <pqxx/pqxx>
 // #include "spdlog/spdlog.h"
+namespace actives {
+    pqxx::result all_public(std::shared_ptr<cp::ConnectionsManager> pool_ptr);
 
-pqxx::result all_public(std::shared_ptr<cp::ConnectionsManager> pool_ptr);
+    pqxx::result active(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int activeId);
 
-pqxx::result active(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int activeId);
+    pqxx::result active(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::string activeTicker);
 
-pqxx::result active(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::string activeTicker);
+    pqxx::result active_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int activeId);
 
-pqxx::result active_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int activeId);
+    pqxx::result active_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::string activeTicker);
 
-pqxx::result active_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::string activeTicker);
+    pqxx::result user_actives(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId);
 
-pqxx::result user_actives(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId);
+    pqxx::result user_actives(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, int activeId);
 
-pqxx::result user_actives(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, int activeId);
+    pqxx::result user_actives(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, std::string activeTicker);
 
-pqxx::result user_actives(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, std::string activeTicker);
+    pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId);
 
-pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId);
+    pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, int activeId);
 
-pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, int activeId);
+    pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, std::string activeTicker);
 
-pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, std::string activeTicker);
-
-std::string add_bid(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::string buy, int userId, int activeId, int bidPrice, int ammount);
+    std::string add_bid(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::string buy, int userId, int activeId, int bidPrice, int ammount);
+}

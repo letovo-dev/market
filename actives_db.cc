@@ -1,127 +1,150 @@
 #include "actives_db.h"
 
-pqxx::result all_public(std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
-    cp::query get_all_public("SELECT * FROM \"active\" WHERE \"ispublic\";");
 
-    auto tx = cp::tx(*pool_ptr, get_all_public);
+namespace actives {
+    pqxx::result all_public(std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
+        auto con = std::move(pool_ptr->getConnection());
 
-    pqxx::result result = get_all_public();
+        pqxx::result result = con->execute("SELECT * FROM \"active\" WHERE \"ispublic\";");
 
-    return result;
-}
+        pool_ptr->returnConnection(std::move(con));
 
-pqxx::result active(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int activeId) {
-    cp::query get_active("SELECT * FROM \"active\" WHERE \"ispublic\" AND activeId = ($1);");
+        return result;
+    }
 
-    auto tx = cp::tx(*pool_ptr, get_active);
+    pqxx::result active(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int activeId) {
+        std::vector<int> params = {activeId};
 
-    pqxx::result result = get_active(activeId);
+        auto con = std::move(pool_ptr->getConnection());
 
-    return result;
-}
+        pqxx::result result = con->execute_params("SELECT * FROM \"active\" WHERE \"ispublic\" AND activeId = ($1);", params);
 
-pqxx::result active(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::string activeTicker) {
-    cp::query get_active("SELECT * FROM \"active\" WHERE \"ispublic\" AND activeTicker = ($1);");
+        pool_ptr->returnConnection(std::move(con));
 
-    auto tx = cp::tx(*pool_ptr, get_active);
+        return result;
+    }
 
-    pqxx::result result = get_active(activeTicker);
+    pqxx::result active(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::string activeTicker) {
+        std::vector<std::string> params = {activeTicker};
 
-    return result;
-}
+        auto con = std::move(pool_ptr->getConnection());
 
-pqxx::result active_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int activeId) {
-    cp::query get_active("SELECT ah.* FROM \"activeHistory\" ah JOIN \"active\" a ON ah.activeId = a.activeId WHERE a.ispublic = true AND ah.activeId = ($1);");
+        pqxx::result result = con->execute_params("SELECT * FROM \"active\" WHERE \"ispublic\" AND activeTicker = ($1);", params);
 
-    auto tx = cp::tx(*pool_ptr, get_active);
+        pool_ptr->returnConnection(std::move(con));
 
-    pqxx::result result = get_active(activeId);
+        return result;
+    }
 
-    return result;
-}
+    pqxx::result active_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int activeId) {
+        std::vector<int> params = {activeId};
 
-pqxx::result active_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::string activeTicker) {
-    cp::query get_active("SELECT ah.* FROM \"activeHistory\" ah JOIN \"active\" a ON ah.activeId = a.activeId WHERE a.ispublic = true AND a.activeTicker = ($1);");
+        auto con = std::move(pool_ptr->getConnection());
 
-    auto tx = cp::tx(*pool_ptr, get_active);
+        pqxx::result result = con->execute_params("SELECT ah.* FROM \"activeHistory\" ah JOIN \"active\" a ON ah.activeId = a.activeId WHERE a.ispublic = true AND ah.activeId = ($1);", params);
 
-    pqxx::result result = get_active(activeTicker);
+        pool_ptr->returnConnection(std::move(con));
 
-    return result;
-}
+        return result;
+    }
 
-pqxx::result user_actives(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId) {
-    cp::query get_user_actives("SELECT * FROM usersactives WHERE userId=($1);");
+    pqxx::result active_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::string activeTicker) {
+        std::vector<std::string> params = {activeTicker};
 
-    auto tx = cp::tx(*pool_ptr, get_user_actives);
+        auto con = std::move(pool_ptr->getConnection());
 
-    pqxx::result restult = get_user_actives(userId);
+        pqxx::result result = con->execute_params("SELECT ah.* FROM \"activeHistory\" ah JOIN \"active\" a ON ah.activeId = a.activeId WHERE a.ispublic = true AND a.activeTicker = ($1);", params);
 
-    return restult;
-}
+        pool_ptr->returnConnection(std::move(con));
 
-pqxx::result user_actives(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, int activeId) {
-    cp::query get_user_actives("SELECT * FROM usersactives WHERE userId=($1) and activeId=($2);");
+        return result;
+    }
 
-    auto tx = cp::tx(*pool_ptr, get_user_actives);
+    pqxx::result user_actives(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId) {
+        std::vector<int> params = {userId};
 
-    pqxx::result restult = get_user_actives(userId, activeId);
+        auto con = std::move(pool_ptr->getConnection());
 
-    return restult;
-}
+        pqxx::result result = con->execute_params("SELECT * FROM usersactives WHERE userId=($1);", params);
 
-pqxx::result user_actives(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, std::string activeTicker) {
-    cp::query get_user_actives("SELECT ua.* FROM usersactives ua JOIN \"active\" a ON ua.activeId = a.activeId WHERE ua.userId=($1) and a.activeTicker=($2);");
+        pool_ptr->returnConnection(std::move(con));
 
-    auto tx = cp::tx(*pool_ptr, get_user_actives);
+        return result;
+    }
 
-    pqxx::result restult = get_user_actives(userId, activeTicker);
+    pqxx::result user_actives(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, int activeId) {
+        std::vector<int> params = {userId, activeId};
 
-    return restult;
-}
+        auto con = std::move(pool_ptr->getConnection());
 
-pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId) {
-    cp::query get_active("SELECT * FROM \"activeHistory\" WHERE userId=($1);");
+        pqxx::result result = con->execute_params("SELECT * FROM usersactives WHERE userId=($1) and activeId=($2);", params);
 
-    auto tx = cp::tx(*pool_ptr, get_active);
+        pool_ptr->returnConnection(std::move(con));
 
-    pqxx::result result = get_active(userId);
+        return result;
+    }
 
-    return result;
-}
+    pqxx::result user_actives(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, std::string activeTicker) {
+        std::vector<int> params = {userId};
 
-pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, int activeId) {
-    cp::query get_active("SELECT * FROM \"activeHistory\" WHERE userId=($1) AND activeId = ($2);");
+        auto con = std::move(pool_ptr->getConnection());
 
-    auto tx = cp::tx(*pool_ptr, get_active);
+        pqxx::result result = con->execute_params("SELECT ua.* FROM usersactives ua JOIN \"active\" a ON ua.activeId = a.activeId WHERE ua.userId=($1) and a.activeTicker=($2);", params);
 
-    pqxx::result result = get_active(userId, activeId);
+        pool_ptr->returnConnection(std::move(con));
 
-    return result;
-}
+        return result;
+    }
 
-pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, std::string activeTicker) {
-    cp::query get_active("SELECT ah.* FROM \"activeHistory\" ah JOIN \"active\" a ON ah.activeId = a.activeId WHERE ah.userId=($1) AND a.activeTicker = ($2);");
+    pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId) {
+        std::vector<int> params = {userId};
 
-    auto tx = cp::tx(*pool_ptr, get_active);
+        auto con = std::move(pool_ptr->getConnection());
 
-    pqxx::result result = get_active(userId, activeTicker);
+        pqxx::result result = con->execute_params("SELECT * FROM \"activeHistory\" WHERE userId=($1);", params);
 
-    return result;
-}
+        pool_ptr->returnConnection(std::move(con));
 
-std::string add_bid(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::string buy, int userId, int activeId, int bidPrice, int ammount) {
-    cp::query add_bid("insert into  pool (buy, userid, activeid, bidprice, ammount) values (($1), ($2), ($3), ($4), ($5));");
-    try {
-        auto tx = cp::tx(*pool_ptr, add_bid);
+        return result;
+    }
 
-        add_bid(buy, userId, activeId, bidPrice, ammount);
+    pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, int activeId) {
+        std::vector<int> params = {userId, activeId};
 
-        tx.commit();
+        auto con = std::move(pool_ptr->getConnection());
 
-        return "ok";
-    } catch (const char* error_message) {
-        // spdlog::error("add_bid error: {}", error_message);
-        return error_message;
+        pqxx::result result = con->execute_params("SELECT * FROM \"activeHistory\" WHERE userId=($1) AND activeId = ($2);", params);
+
+        pool_ptr->returnConnection(std::move(con));
+
+        return result;
+    }
+
+    pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, std::string activeTicker) {
+        std::vector<int> params = {userId};
+
+        auto con = std::move(pool_ptr->getConnection());
+
+        pqxx::result result = con->execute_params("SELECT ah.* FROM \"activeHistory\" ah JOIN \"active\" a ON ah.activeId = a.activeId WHERE ah.userId=($1) AND a.activeTicker = ($2);", params);
+
+        pool_ptr->returnConnection(std::move(con));
+
+        return result;
+    }
+
+    std::string add_bid(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::string buy, int userId, int activeId, int bidPrice, int ammount) {
+        std::vector<std::string> params = {buy, std::to_string(userId), std::to_string(activeId), std::to_string(bidPrice), std::to_string(ammount)};
+        auto con = std::move(pool_ptr->getConnection());
+        std::string message;
+        try {
+            con->execute_params("INSERT INTO \"bids\" (buy, userId, activeId, bidPrice, ammount) VALUES($1, $2, $3, $4, $5);", params, true);
+
+            message = "ok";
+        } catch (const char* error_message) {
+            message = error_message;
+        }
+        pool_ptr->returnConnection(std::move(con));
+        
+        return message;
     }
 }
