@@ -83,8 +83,14 @@ namespace transactions::server {
     }
 
     void get_balance(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
-        router.get()->http_get(R"(/transactions/balance/:token([a-zA-Z0-9]+))", [pool_ptr, logger_ptr](auto req, auto) {
-            std::string token = url::get_last_url_arg(req->header().path());
+        router.get()->http_get("/transactions/balance/", [pool_ptr, logger_ptr](auto req, auto) {
+            std::string token;
+
+            try {
+                token = req -> header().get_field("token");
+            } catch (const std::exception& e) {
+                return req->create_response(restinio::status_non_authoritative_information()).done();
+            }
 
             if (token.empty() || token == "balance") {
                 return req->create_response(restinio::status_non_authoritative_information()).done();
@@ -101,8 +107,13 @@ namespace transactions::server {
     }
 
     void get_transactions(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
-        router.get()->http_get(R"(/transactions/get/:token([a-zA-Z0-9]+))", [pool_ptr, logger_ptr](auto req, auto) {
-            std::string token = url::get_last_url_arg(req->header().path());
+        router.get()->http_get("/transactions/get/", [pool_ptr, logger_ptr](auto req, auto) {
+            std::string token;
+            try {
+                token = req -> header().get_field("token");
+            } catch (const std::exception& e) {
+                return req->create_response(restinio::status_non_authoritative_information()).done();
+            }
 
             if (token.empty() || token == "get") {
                 return req->create_response(restinio::status_non_authoritative_information()).done();
