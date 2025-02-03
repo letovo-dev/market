@@ -64,6 +64,17 @@ namespace actives::deals {
         }
     }
 
+    void DOM::start_resolver(std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
+        std::thread t([this, pool_ptr] {
+            while (true) {
+                std::this_thread::sleep_for(std::chrono::seconds(10));
+                resolve_bids(pool_ptr);
+            }
+        });
+        t.detach();
+    }
+
+
     std::vector<bid> DOM::users_bids(std::string user_name) {
         std::vector<bid> res;
         for (auto& [price, bids] : bids) {
@@ -140,5 +151,7 @@ namespace actives::deals::server {
         add_bid(router, pool_ptr, logger_ptr, dom_ptr);
 
         remove_bid(router, pool_ptr, logger_ptr, dom_ptr);
+
+        dom_ptr -> start_resolver(pool_ptr);
     }
 }

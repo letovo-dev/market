@@ -29,6 +29,8 @@ namespace actives::deals {
 
             std::vector<bid> users_bids(std::string user_name);
 
+            void start_resolver(std::shared_ptr<cp::ConnectionsManager> pool_ptr);
+
             std::vector<bid> check_bids();
     };
 }
