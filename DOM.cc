@@ -1,9 +1,14 @@
 #include "DOM.h"
 
 namespace actives::deals {
-    bool DOM::add_bid(int bid_id, std::string user_name, int price, int amount, actives::active_obj act) {
-        bids[price].push(bid(price, bid_id, user_name, act, amount));
-        return true;
+    bool DOM::add_bid(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int bid_id, std::string user_name, int price, int amount, actives::active_obj act) {
+        int total = price * amount;
+        // TODO reciever username
+        if(transactions::transfer(user_name, "scv-7", total,pool_ptr)) {
+            bids[price].push(bid(price, bid_id, user_name, act, amount));
+            return true;
+        }
+        return false;
     }
 
     std::vector<bid> DOM::check_bids() {
@@ -40,14 +45,100 @@ namespace actives::deals {
         return res;
     }
     
-    void DOM::remove_bid(int price, int bid_id) {
+    void DOM::remove_bid(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int price, int bid_id) {
         if (bids.find(price) == bids.end()) {
             return;
         }
-        bids[price].delBid(bid_id);
+        bid bidToDelete = bids[price].delBid(bid_id);
+        transactions::transfer("scv-7", bidToDelete.owner, bidToDelete.amount * bidToDelete.price, pool_ptr);
     }
 
-    void DOM::remove_bid(bid b) {
-        remove_bid(b.price, b.bid_id);
+    void DOM::remove_bid(std::shared_ptr<cp::ConnectionsManager> pool_ptr, bid b) {
+        remove_bid(pool_ptr, b.price, b.bid_id);
+    }
+
+    void DOM::resolve_bids(std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
+        std::vector<bid> res = check_bids();
+        for (auto b : res) {
+            actives::add_active(pool_ptr, b.owner, b.active);
+        }
+    }
+
+    std::vector<bid> DOM::users_bids(std::string user_name) {
+        std::vector<bid> res;
+        for (auto& [price, bids] : bids) {
+            for (auto& b : bids.byUser(user_name)) {
+                res.push_back(b);
+            }
+        }
+        return res;
+    }
+}
+
+namespace actives::deals::server {
+    void add_bid(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr, std::shared_ptr<actives::deals::DOM> dom_ptr) {
+        router.get()->http_post("/deals/add_bid", [pool_ptr, logger_ptr, dom_ptr](auto req, auto) {
+            rapidjson::Document new_body;
+            new_body.Parse(req->body().data());
+            if (!new_body.HasMember("token") || !new_body.HasMember("price") || !new_body.HasMember("amount") || !new_body.HasMember("active")) {
+                return req->create_response(restinio::status_bad_request()).done();
+            }
+            std::string user_name = auth::get_username(new_body["token"].GetString(), pool_ptr);
+            int price = new_body["price"].GetInt();
+            int amount = new_body["amount"].GetInt();
+            auto now = std::chrono::system_clock::now();
+            auto now_time_t = std::chrono::system_clock::to_time_t(now);
+            int bid_id = std::stoi(hashing::hash_from_string(user_name + std::to_string(now_time_t)).substr(0, 10));
+            actives::active_obj act;
+            if (new_body["active"].IsInt()) {
+                act.activeId = new_body["active"].GetInt();
+            }
+            if (new_body["active"].IsString()) {
+                act.activeTicker = new_body["active"].GetString();
+            }
+            if (dom_ptr->add_bid(pool_ptr, bid_id, user_name, price, amount, act)) {
+                return req->create_response().set_body("ok").done();
+            } else {
+                return req->create_response().set_body("no money").done();
+            }
+        });
+    }
+    void remove_bid(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr, std::shared_ptr<actives::deals::DOM> dom_ptr) {
+        router.get()->http_delete("/deals/remove_bid", [pool_ptr, logger_ptr, dom_ptr](auto req, auto) {
+            rapidjson::Document new_body;
+            new_body.Parse(req->body().data());
+            if (!new_body.HasMember("token") || !new_body.HasMember("price") || !new_body.HasMember("bid_id")) {
+                return req->create_response(restinio::status_bad_request()).done();
+            }
+            std::string user_name = auth::get_username(new_body["token"].GetString(), pool_ptr);
+            int price = new_body["price"].GetInt();
+            int bid_id = new_body["bid_id"].GetInt();
+            dom_ptr->remove_bid(pool_ptr, price, bid_id);
+            return req->create_response().set_body("ok").done();
+        });
+    }
+
+    void users_bids(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr, std::shared_ptr<actives::deals::DOM> dom_ptr) {
+        router.get()->http_get("/deals/users_bids", [pool_ptr, logger_ptr, dom_ptr](auto req, auto) {
+            std::string token;
+            try {
+                token = req -> header().get_field("token");
+            } catch (const std::exception& e) {
+                return req->create_response(restinio::status_non_authoritative_information()).done();
+            }
+            std::string user_name = auth::get_username(token, pool_ptr);
+            if(user_name == "") {
+                return req->create_response(restinio::status_unauthorized()).done();
+            }
+            return req->create_response().set_body(actives::deals::serialaze(dom_ptr->users_bids(user_name))).done();
+        });
+    }
+
+    void enable_bids(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
+        std::shared_ptr<DOM> dom_ptr = std::make_shared<DOM>();
+
+        add_bid(router, pool_ptr, logger_ptr, dom_ptr);
+
+        remove_bid(router, pool_ptr, logger_ptr, dom_ptr);
     }
 }
