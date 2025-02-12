@@ -92,7 +92,8 @@ namespace actives::deals::server {
             rapidjson::Document new_body;
             new_body.Parse(req->body().data());
             if (!new_body.HasMember("token") || !new_body.HasMember("price") || !new_body.HasMember("amount") || !new_body.HasMember("active")) {
-                return req->create_response(restinio::status_bad_request()).done();
+                return req->create_response(restinio::status_bad_request())
+                    .done();
             }
             std::string user_name = auth::get_username(new_body["token"].GetString(), pool_ptr);
             int price = new_body["price"].GetInt();
@@ -108,9 +109,15 @@ namespace actives::deals::server {
                 act.activeTicker = new_body["active"].GetString();
             }
             if (dom_ptr->add_bid(pool_ptr, bid_id, user_name, price, amount, act)) {
-                return req->create_response().set_body("ok").done();
+                return req->create_response()
+                .append_header("Content-Type", "text/plain; charset=utf-8")
+                .set_body("ok")
+                .done();
             } else {
-                return req->create_response().set_body("no money").done();
+                return req->create_response()
+                .append_header("Content-Type", "text/plain; charset=utf-8")
+                .set_body("no money")
+                .done();
             }
         });
     }
@@ -119,13 +126,17 @@ namespace actives::deals::server {
             rapidjson::Document new_body;
             new_body.Parse(req->body().data());
             if (!new_body.HasMember("token") || !new_body.HasMember("price") || !new_body.HasMember("bid_id")) {
-                return req->create_response(restinio::status_bad_request()).done();
+                return req->create_response(restinio::status_bad_request())
+                .done();
             }
             std::string user_name = auth::get_username(new_body["token"].GetString(), pool_ptr);
             int price = new_body["price"].GetInt();
             int bid_id = new_body["bid_id"].GetInt();
             dom_ptr->remove_bid(pool_ptr, price, bid_id);
-            return req->create_response().set_body("ok").done();
+            return req->create_response()
+                .append_header("Content-Type", "application/json; charset=utf-8")
+                .set_body("ok")
+                .done();
         });
     }
 
@@ -133,15 +144,20 @@ namespace actives::deals::server {
         router.get()->http_get("/deals/users_bids", [pool_ptr, logger_ptr, dom_ptr](auto req, auto) {
             std::string token;
             try {
-                token = req -> header().get_field("token");
+                token = req -> header().get_field("Bearer");
             } catch (const std::exception& e) {
-                return req->create_response(restinio::status_non_authoritative_information()).done();
+                return req->create_response(restinio::status_non_authoritative_information())
+                .done();
             }
             std::string user_name = auth::get_username(token, pool_ptr);
             if(user_name == "") {
-                return req->create_response(restinio::status_unauthorized()).done();
+                return req->create_response(restinio::status_unauthorized())
+                .done();
             }
-            return req->create_response().set_body(actives::deals::serialaze(dom_ptr->users_bids(user_name))).done();
+            return req->create_response()
+                .append_header("Content-Type", "application/json; charset=utf-8")
+                .set_body(actives::deals::serialaze(dom_ptr->users_bids(user_name)))
+                .done();
         });
     }
 

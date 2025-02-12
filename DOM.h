@@ -74,7 +74,7 @@ namespace actives::deals::server {
 //         router.get()->http_post("/actives/add_bid", [pool_ptr, logger_ptr](auto req, auto) {
 //             std::string token;
 //             try {
-//                 token = req -> header().get_field("token");
+//                 token = req -> header().get_field("Bearer");
 //             } catch (const std::exception& e) {
 //                 return req->create_response(restinio::status_non_authoritative_information()).done();
 //             }

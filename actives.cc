@@ -163,7 +163,10 @@ namespace actives {
 namespace actives::server {
     void all_public(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
         router.get()->http_get("/actives/all_actives", [pool_ptr, logger_ptr](auto req, auto) {
-            return req->create_response().set_body(cp::serialize(actives::all_public(pool_ptr))).done();
+            return req->create_response()
+                .append_header("Content-Type", "application/json; charset=utf-8")
+                .set_body(cp::serialize(actives::all_public(pool_ptr)))
+                .done();
         });
     }
 
@@ -175,9 +178,13 @@ namespace actives::server {
             } else if (req -> header().has_field("active_ticker")) {
                 act.activeTicker = req -> header().get_field("active_ticker");
             } else {
-                return req->create_response(restinio::status_non_authoritative_information()).done();
+                return req->create_response(restinio::status_non_authoritative_information())
+                .done();
             }
-            return req->create_response().set_body(cp::serialize(actives::active(pool_ptr, act))).done();
+            return req->create_response()
+                .append_header("Content-Type", "application/json; charset=utf-8")
+                .set_body(cp::serialize(actives::active(pool_ptr, act)))
+                .done();
         });
     }
 
@@ -190,10 +197,14 @@ namespace actives::server {
             } else if (req -> header().has_field("active_ticker")) {
                 act.activeTicker = req -> header().get_field("active_ticker");
             } else {
-                return req->create_response(restinio::status_non_authoritative_information()).done();
+                return req->create_response(restinio::status_non_authoritative_information())
+                .done();
             }
 
-            return req->create_response().set_body(cp::serialize(actives::active_history(pool_ptr, act))).done();
+            return req->create_response()
+                .append_header("Content-Type", "application/json; charset=utf-8")
+                .set_body(cp::serialize(actives::active_history(pool_ptr, act)))
+                .done();
         });
     }
 
@@ -203,9 +214,13 @@ namespace actives::server {
             try {
                 user_name = req -> header().get_field("user_name");
             } catch (const std::exception& e) {
-                return req->create_response(restinio::status_non_authoritative_information()).done();
+                return req->create_response(restinio::status_non_authoritative_information())
+                .done();
             }
-            return req->create_response().set_body(cp::serialize(actives::user_actives(pool_ptr, user_name))).done();
+            return req->create_response()
+                .append_header("Content-Type", "application/json; charset=utf-8")
+                .set_body(cp::serialize(actives::user_actives(pool_ptr, user_name)))
+                .done();
         });
     }
 
@@ -215,9 +230,13 @@ namespace actives::server {
             try {
                 user_name = req -> header().get_field("user_name");
             } catch (const std::exception& e) {
-                return req->create_response(restinio::status_non_authoritative_information()).done();
+                return req->create_response(restinio::status_non_authoritative_information())
+                .done();
             }
-            return req->create_response().set_body(cp::serialize(actives::user_history(pool_ptr, user_name))).done();
+            return req->create_response()
+                .append_header("Content-Type", "application/json; charset=utf-8")
+                .set_body(cp::serialize(actives::user_history(pool_ptr, user_name)))
+                .done();
         });
     }
 }

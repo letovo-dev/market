@@ -61,7 +61,8 @@ namespace transactions::server {
             new_body.Parse(req->body().c_str());
 
             if (!new_body.HasMember("token") || !auth::is_authed(new_body["token"].GetString(), pool_ptr)) {
-                return req->create_response(restinio::status_unauthorized()).done();
+                return req->create_response(restinio::status_unauthorized())
+                .done();
             }
 
             if (new_body.HasMember("receiver") && new_body.HasMember("amount")) {
@@ -71,13 +72,20 @@ namespace transactions::server {
 
                 if (transactions::transfer(sender, receiver, amount, pool_ptr)) {
                     std::cout << "ok" << std::endl;
-                    return req->create_response().set_body("ok").done();
+                    return req->create_response()
+                        .append_header("Content-Type", "text/plain; charset=utf-8")
+                        .set_body("ok")
+                .done();
                 } else {
                     std::cout << "no money" << std::endl;
-                    return req->create_response().set_body(Comment::giveMe().no_money).done();
+                    return req->create_response()
+                        .append_header("Content-Type", "text/plain; charset=utf-8")
+                        .set_body(Comment::giveMe().no_money)
+                .done();
                 }
             } else {
-                return req->create_response(restinio::status_non_authoritative_information()).done();
+                return req->create_response(restinio::status_non_authoritative_information())
+                .done();
             }
         });
     }
@@ -87,22 +95,28 @@ namespace transactions::server {
             std::string token;
 
             try {
-                token = req -> header().get_field("token");
+                token = req -> header().get_field("Bearer");
             } catch (const std::exception& e) {
-                return req->create_response(restinio::status_non_authoritative_information()).done();
+                return req->create_response(restinio::status_non_authoritative_information())
+                .done();
             }
 
             if (token.empty() || token == "balance") {
-                return req->create_response(restinio::status_non_authoritative_information()).done();
+                return req->create_response(restinio::status_non_authoritative_information())
+                .done();
             }
 
             if (!auth::is_authed(token, pool_ptr)) {
-                return req->create_response(restinio::status_unauthorized()).done();
+                return req->create_response(restinio::status_unauthorized())
+                .done();
             }
 
             std::string username = auth::get_username(token, pool_ptr);
 
-            return req->create_response().set_body(std::to_string(transactions::get_balance(username, pool_ptr))).done();
+            return req->create_response()
+                .append_header("Content-Type", "application/json; charset=utf-8")
+                .set_body(std::to_string(transactions::get_balance(username, pool_ptr)))
+                .done();
         });
     }
 
@@ -110,22 +124,28 @@ namespace transactions::server {
         router.get()->http_get("/transactions/get/", [pool_ptr, logger_ptr](auto req, auto) {
             std::string token;
             try {
-                token = req -> header().get_field("token");
+                token = req -> header().get_field("Bearer");
             } catch (const std::exception& e) {
-                return req->create_response(restinio::status_non_authoritative_information()).done();
+                return req->create_response(restinio::status_non_authoritative_information())
+                .done();
             }
 
             if (token.empty() || token == "get") {
-                return req->create_response(restinio::status_non_authoritative_information()).done();
+                return req->create_response(restinio::status_non_authoritative_information())
+                .done();
             }
 
             if (!auth::is_authed(token, pool_ptr)) {
-                return req->create_response(restinio::status_unauthorized()).done();
+                return req->create_response(restinio::status_unauthorized())
+                .done();
             }
 
             std::string username = auth::get_username(token, pool_ptr);
 
-            return req->create_response().set_body(cp::serialize(transactions::get_transactions(username, pool_ptr))).done();
+            return req->create_response()
+                .append_header("Content-Type", "application/json; charset=utf-8")
+                .set_body(cp::serialize(transactions::get_transactions(username, pool_ptr)))
+                .done();
         });
     }
 } // namespace transactions::server
