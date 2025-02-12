@@ -1,6 +1,7 @@
 #include "../basic/pqxx_cp.h"
 #include "../basic/utils.h"
 #include "../basic/auth.h"
+#include "../basic/config.h"
 #include "transactions.h"
 #include "actives.h"
 #include <string>
@@ -16,7 +17,9 @@ namespace actives::deals {
         private:
             // contains {price, bid}
             std::map<int, utils::LinkedList> bids;
+            std::shared_ptr<cp::ConnectionsManager> pool_ptr;
             void resolve_bids(std::shared_ptr<cp::ConnectionsManager> pool_ptr);
+            void resolve_bids(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr);
 
         public:
             DOM(std::shared_ptr<cp::ConnectionsManager> pool_ptr);
@@ -29,7 +32,7 @@ namespace actives::deals {
 
             std::vector<bid> users_bids(std::string user_name);
 
-            void start_resolver(std::shared_ptr<cp::ConnectionsManager> pool_ptr);
+            void start_resolver();
 
             std::vector<bid> check_bids();
     };

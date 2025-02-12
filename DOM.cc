@@ -1,6 +1,8 @@
 #include "DOM.h"
 
 namespace actives::deals {
+    DOM::DOM(std::shared_ptr<cp::ConnectionsManager> pool_ptr) : pool_ptr(pool_ptr) {};
+
     bool DOM::add_bid(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int bid_id, std::string user_name, int price, int amount, actives::active_obj act) {
         int total = price * amount;
         // TODO reciever username
@@ -27,9 +29,23 @@ namespace actives::deals {
                     auto b2 = end -> second.top();
                     if (b1->bidVal.price == b2->bidVal.price) {
                         int ammount = std::min(b1->bidVal.amount, b2->bidVal.amount);
-                        res.push_back(bid(b1->bidVal.price, b1->bidVal.bid_id, b1->bidVal.owner, b1->bidVal.active, ammount, true));
+                        res.push_back(bid(
+                            b1->bidVal.price, 
+                            b1->bidVal.bid_id, 
+                            b1->bidVal.owner, 
+                            b1->bidVal.active, 
+                            ammount, 
+                            true
+                        ));
                         b1->bidVal.amount -= ammount;
-                        res.push_back(bid(b2->bidVal.price, b2->bidVal.bid_id, b2->bidVal.owner, b2->bidVal.active, ammount, true));
+                        res.push_back(bid(
+                            b2->bidVal.price, 
+                            b2->bidVal.bid_id, 
+                            b2->bidVal.owner, 
+                            b2->bidVal.active, 
+                            ammount, 
+                            true
+                        ));
                         b2->bidVal.amount -= ammount;
                         if (b1->bidVal.amount == 0) {
                             start -> second.pop();
@@ -50,7 +66,12 @@ namespace actives::deals {
             return;
         }
         bid bidToDelete = bids[price].delBid(bid_id);
-        transactions::transfer("scv-7", bidToDelete.owner, bidToDelete.amount * bidToDelete.price, pool_ptr);
+        transactions::transfer(
+            Config::giveMe().market_config.junk_user, 
+            bidToDelete.owner, 
+            bidToDelete.amount * bidToDelete.price, 
+            pool_ptr
+        );
     }
 
     void DOM::remove_bid(std::shared_ptr<cp::ConnectionsManager> pool_ptr, bid b) {
@@ -61,13 +82,18 @@ namespace actives::deals {
         std::vector<bid> res = check_bids();
         for (auto b : res) {
             actives::add_active(pool_ptr, b.owner, b.active);
+            DOM::remove_bid(pool_ptr, b);
         }
     }
 
-    void DOM::start_resolver(std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
-        std::thread t([this, pool_ptr] {
+    void DOM::start_resolver() {
+        std::thread t([this] {
             while (true) {
-                std::this_thread::sleep_for(std::chrono::seconds(10));
+                std::this_thread::sleep_for(
+                    std::chrono::seconds(
+                        Config::giveMe().market_config.bid_resolver_sleep_time
+                    )
+                );
                 resolve_bids(pool_ptr);
             }
         });
@@ -162,12 +188,12 @@ namespace actives::deals::server {
     }
 
     void enable_bids(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
-        std::shared_ptr<DOM> dom_ptr = std::make_shared<DOM>();
+        std::shared_ptr<DOM> dom_ptr = std::make_shared<DOM>(pool_ptr);
 
         add_bid(router, pool_ptr, logger_ptr, dom_ptr);
 
         remove_bid(router, pool_ptr, logger_ptr, dom_ptr);
 
-        dom_ptr -> start_resolver(pool_ptr);
+        dom_ptr -> start_resolver();
     }
 }
