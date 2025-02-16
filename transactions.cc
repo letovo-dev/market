@@ -60,13 +60,23 @@ namespace transactions::server {
             rapidjson::Document new_body;
             new_body.Parse(req->body().c_str());
 
-            if (!new_body.HasMember("token") || !auth::is_authed(new_body["token"].GetString(), pool_ptr)) {
+            std::string token;
+            try {
+                token = req -> header().get_field("Bearer");
+            } catch (const std::exception& e) {
+                return req->create_response(restinio::status_unauthorized()).done();
+            }
+
+            if (token.empty()) {
+                return req->create_response(restinio::status_unauthorized()).done();
+            }
+            if (!auth::is_authed(token, pool_ptr)) {
                 return req->create_response(restinio::status_unauthorized())
                 .done();
             }
 
             if (new_body.HasMember("receiver") && new_body.HasMember("amount")) {
-                std::string sender = auth::get_username(new_body["token"].GetString(), pool_ptr);
+                std::string sender = auth::get_username(token, pool_ptr);
                 std::string receiver = new_body["receiver"].GetString();
                 int amount = new_body["amount"].GetInt();
 
@@ -97,12 +107,12 @@ namespace transactions::server {
             try {
                 token = req -> header().get_field("Bearer");
             } catch (const std::exception& e) {
-                return req->create_response(restinio::status_non_authoritative_information())
+                return req->create_response(restinio::status_unauthorized())
                 .done();
             }
 
-            if (token.empty() || token == "balance") {
-                return req->create_response(restinio::status_non_authoritative_information())
+            if (token.empty()) {
+                return req->create_response(restinio::status_unauthorized())
                 .done();
             }
 
@@ -126,12 +136,12 @@ namespace transactions::server {
             try {
                 token = req -> header().get_field("Bearer");
             } catch (const std::exception& e) {
-                return req->create_response(restinio::status_non_authoritative_information())
+                return req->create_response(restinio::status_unauthorized())
                 .done();
             }
 
-            if (token.empty() || token == "get") {
-                return req->create_response(restinio::status_non_authoritative_information())
+            if (token.empty()) {
+                return req->create_response(restinio::status_unauthorized())
                 .done();
             }
 

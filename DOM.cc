@@ -117,11 +117,21 @@ namespace actives::deals::server {
         router.get()->http_post("/deals/add_bid", [pool_ptr, logger_ptr, dom_ptr](auto req, auto) {
             rapidjson::Document new_body;
             new_body.Parse(req->body().data());
-            if (!new_body.HasMember("token") || !new_body.HasMember("price") || !new_body.HasMember("amount") || !new_body.HasMember("active")) {
+            if (!new_body.HasMember("price") || !new_body.HasMember("amount") || !new_body.HasMember("active")) {
                 return req->create_response(restinio::status_bad_request())
                     .done();
             }
-            std::string user_name = auth::get_username(new_body["token"].GetString(), pool_ptr);
+            std::string token;
+            try {
+                token = req -> header().get_field("Bearer");
+            } catch (const std::exception& e) {
+                return req->create_response(restinio::status_unauthorized()).done();
+            }
+
+            if (token.empty()) {
+                return req->create_response(restinio::status_unauthorized()).done();
+            }
+            std::string user_name = auth::get_username(token, pool_ptr);
             int price = new_body["price"].GetInt();
             int amount = new_body["amount"].GetInt();
             auto now = std::chrono::system_clock::now();
@@ -151,11 +161,21 @@ namespace actives::deals::server {
         router.get()->http_delete("/deals/remove_bid", [pool_ptr, logger_ptr, dom_ptr](auto req, auto) {
             rapidjson::Document new_body;
             new_body.Parse(req->body().data());
-            if (!new_body.HasMember("token") || !new_body.HasMember("price") || !new_body.HasMember("bid_id")) {
+            if (!new_body.HasMember("price") || !new_body.HasMember("bid_id")) {
                 return req->create_response(restinio::status_bad_request())
                 .done();
             }
-            std::string user_name = auth::get_username(new_body["token"].GetString(), pool_ptr);
+            std::string token;
+            try {
+                token = req -> header().get_field("Bearer");
+            } catch (const std::exception& e) {
+                return req->create_response(restinio::status_unauthorized()).done();
+            }
+
+            if (token.empty()) {
+                return req->create_response(restinio::status_unauthorized()).done();
+            }
+            std::string user_name = auth::get_username(token, pool_ptr);
             int price = new_body["price"].GetInt();
             int bid_id = new_body["bid_id"].GetInt();
             dom_ptr->remove_bid(pool_ptr, price, bid_id);
@@ -172,7 +192,11 @@ namespace actives::deals::server {
             try {
                 token = req -> header().get_field("Bearer");
             } catch (const std::exception& e) {
-                return req->create_response(restinio::status_non_authoritative_information())
+                return req->create_response(restinio::status_unauthorized())
+                .done();
+            }
+            if (token.empty()) {
+                return req->create_response(restinio::status_unauthorized())
                 .done();
             }
             std::string user_name = auth::get_username(token, pool_ptr);
