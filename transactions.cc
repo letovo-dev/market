@@ -20,7 +20,7 @@ namespace transactions {
     bool transfer(std::string sender_username, std::string receiver_username, int amount, std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
         int balance = get_balance(sender_username, pool_ptr);
         bool flag = amount < 0;
-        if (auth::is_admin_by_uname(sender_username, pool_ptr)) {
+        if (auth::is_rights_by_username(sender_username, pool_ptr)) {
             balance = 999999999;
             flag = false;
         }
@@ -64,10 +64,12 @@ namespace transactions::server {
             try {
                 token = req -> header().get_field("Bearer");
             } catch (const std::exception& e) {
+                logger_ptr->info([]{return "can't get token";});
                 return req->create_response(restinio::status_unauthorized()).done();
             }
 
             if (token.empty()) {
+                logger_ptr->info([]{return "token is empty";});
                 return req->create_response(restinio::status_unauthorized()).done();
             }
             if (!auth::is_authed(token, pool_ptr)) {
