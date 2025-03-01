@@ -2,6 +2,52 @@
 
 namespace transactions {
 
+    RegisteredTransaction::RegisteredTransaction() {
+        reigstered_transactions = {};
+    }
+
+    RegisteredTransaction::~RegisteredTransaction() {
+        reigstered_transactions.clear();
+    }
+
+    TransactionStatus RegisteredTransaction::add_transaction(std::string tr_id, std::shared_ptr<TransactionDetails> tr) {
+        std::lock_guard<std::mutex> lock(mtx);
+        try {
+            if(reigstered_transactions.find(tr_id) != reigstered_transactions.end()) {
+                return TransactionStatus::Error;
+            }
+            reigstered_transactions[tr_id] = tr;
+            return TransactionStatus::Success;
+        } catch (...) {
+            return TransactionStatus::Error;
+        }
+    }
+
+    TransactionStatus RegisteredTransaction::remove_transaction(std::string tr_id) {
+        std::lock_guard<std::mutex> lock(mtx);
+        try {
+            reigstered_transactions.erase(tr_id);
+        } catch (...) {
+            return TransactionStatus::Error;
+        }
+        return TransactionStatus::Success;
+    }
+
+    std::shared_ptr<TransactionDetails> RegisteredTransaction::get_transaction(std::string tr_id) {
+        std::lock_guard<std::mutex> lock(mtx);
+        if(reigstered_transactions.find(tr_id) == reigstered_transactions.end()) {
+            return nullptr;
+        }
+        return reigstered_transactions[tr_id];
+    }
+
+    int RegisteredTransaction::size() {
+        std::lock_guard<std::mutex> lock(mtx);
+        return reigstered_transactions.size();
+    }
+
+    RegisteredTransaction registered_transactions = RegisteredTransaction();
+
     int get_balance(std::string username, std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
         auto con = std::move(pool_ptr->getConnection());
 
@@ -17,29 +63,59 @@ namespace transactions {
         return result[0]["balance"].as<int>();
     }
 
-    bool transfer(std::string sender_username, std::string receiver_username, int amount, std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
-        int balance = get_balance(sender_username, pool_ptr);
-        bool flag = amount < 0;
-        if (auth::is_rights_by_username(sender_username, pool_ptr)) {
-            balance = 999999999;
-            flag = false;
+
+    TransactionStatus transfer(std::string tr_id, std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
+        std::cout << 0 << std::endl;
+        auto transaction = registered_transactions.get_transaction(tr_id);
+        if(transaction == nullptr) {
+            return TransactionStatus::WrongId;
         }
-        if (balance < amount || flag) {
-            return false;
+        std::cout << 1 << std::endl;
+        int balance = get_balance(transaction->sender, pool_ptr);
+        if (auth::is_rights_by_username(transaction->sender, pool_ptr)) {
+            balance = 999999999;
+        }
+        if (balance < std::stoi(transaction->amount)) {
+            return TransactionStatus::NoMoney;
         }
 
         auto con = std::move(pool_ptr->getConnection());
-        std::vector<std::string> params = {std::to_string(amount), sender_username};
+        std::vector<cp::Request> sql_transactions = {
 
-        con->execute_params("UPDATE \"user\" SET balance=balance-($1) WHERE username=($2);", params, true);
-        params[1] = receiver_username;
-        con->execute_params("UPDATE \"user\" SET balance=balance+($1) WHERE username=($2);", params, true);
-        params = {sender_username, receiver_username, std::to_string(amount)};
-        con->execute_params("INSERT INTO \"transactions\" (sender, receiver, amount) VALUES($1, $2, $3);", params, true);
+            cp::Request("UPDATE \"user\" SET balance=balance-($1) WHERE username=($2);", {transaction->amount, transaction->sender}, true),
+            cp::Request("UPDATE \"user\" SET balance=balance+($1) WHERE username=($2);", {transaction->amount, transaction->receiver}, true),
+            cp::Request(
+                "INSERT INTO \"transactions\" (sender, receiver, amount) VALUES($1, $2, $3);",
+                {
+                    transaction->sender,
+                    transaction->receiver,
+                    transaction->amount
+                },
+                true
+            ),
+            cp::Request(
+                "SELECT transactionid FROM \"transactions\" WHERE sender=$1 AND receiver=$2 AND amount=$3 ORDER BY transactionid DESC LIMIT 1;",
+                {
+                    transaction->sender,
+                    transaction->receiver,
+                    transaction->amount
+                }
+            )
+        };
+        std::cout << 2 << std::endl;
+        
+        auto r = con -> execute_many(sql_transactions);
 
         pool_ptr->returnConnection(std::move(con));
+        std::cout << 3 << std::endl;
+        registered_transactions.remove_transaction(tr_id);
 
-        return true;
+        if(r.empty()) {
+            return TransactionStatus::Error;
+        }
+
+
+        return TransactionStatus::Success;
     }
 
     pqxx::result get_transactions(std::string username, std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
@@ -52,9 +128,102 @@ namespace transactions {
         }
         return result;
     }
+
+
+    std::pair<TransactionStatus, std::string> prepare_transaction(std::string sender, std::string reciver, int ammount, std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
+        int balance = get_balance(sender, pool_ptr);
+        if (auth::is_rights_by_username(sender, pool_ptr)) {
+            balance = 999999999;
+        }
+        if (balance < ammount) {
+            return {TransactionStatus::NoMoney, ""};
+        }
+        std::string tr_id = to_string(
+                chrono::duration_cast<chrono::seconds>(chrono::system_clock::now()
+                .time_since_epoch())
+                .count()
+            )
+            + sender
+            + reciver
+            + to_string(ammount);
+
+        auto con = std::move(pool_ptr->getConnection());
+        std::vector<std::string> params = {reciver};
+        auto r = con -> execute_params("select * from \"user\" where username=($1);", params, true);
+        if (r.empty()) {
+            return {TransactionStatus::WrongId, ""};
+        }
+        
+        return {registered_transactions.add_transaction(tr_id, std::make_shared<TransactionDetails>(sender, reciver, std::to_string(ammount))), tr_id};
+    }
 } // namespace transactions
 
 namespace transactions::server {
+    void prepare_transaction(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
+        router.get()->http_post("/transactions/prepare", [pool_ptr, logger_ptr](auto req, auto) {
+            rapidjson::Document new_body;
+            new_body.Parse(req->body().c_str());
+
+            std::string token;
+            std::cout << registered_transactions.size() << std::endl;
+            try {
+                token = req -> header().get_field("Bearer");
+            } catch (const std::exception& e) {
+                return req->create_response(restinio::status_unauthorized())
+                .done();
+            }
+
+            if (token.empty()) {
+                return req->create_response(restinio::status_unauthorized())
+                .done();
+            }
+
+            if (!auth::is_authed(token, pool_ptr)) {
+                return req->create_response(restinio::status_unauthorized())
+                .done();
+            }
+
+            if (new_body.HasMember("receiver") && new_body.HasMember("amount")) {
+                std::string sender = auth::get_username(token, pool_ptr);
+                std::string receiver = new_body["receiver"].GetString();
+                int amount = new_body["amount"].GetInt();
+                auto tr_id = transactions::prepare_transaction(sender, receiver, amount, pool_ptr);
+                switch (tr_id.first)
+                {
+                case TransactionStatus::Success:
+                    return req->create_response()
+                        .append_header("Content-Type", "text/plain; charset=utf-8")
+                        .set_body(tr_id.second)
+                    .done();    
+                    break;
+                case TransactionStatus::NoMoney:
+                    return req->create_response(restinio::status_not_acceptable())
+                        .append_header("Content-Type", "text/plain; charset=utf-8")
+                        .set_body(Comment::giveMe().no_money)
+                    .done();
+                    break;
+                case TransactionStatus::WrongId:
+                    return req->create_response(restinio::status_not_acceptable())
+                        .append_header("Content-Type", "text/plain; charset=utf-8")
+                        .set_body("wrong username")
+                    .done();
+                    break;
+                case TransactionStatus::Error:
+                default:
+                    break;
+                }
+            } 
+            return req->create_response(
+                restinio::status_non_authoritative_information()
+            )
+                .append_header("Content-Type", "text/plain; charset=utf-8")
+                .set_body("receiver: " + std::to_string(new_body.HasMember("receiver")) + " amount: " + std::to_string(new_body.HasMember("amount")))
+            .done();
+        
+        });
+    }
+
+
     void transfer(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
         router.get()->http_post("/transactions/send", [pool_ptr, logger_ptr](auto req, auto) {
             rapidjson::Document new_body;
@@ -77,23 +246,36 @@ namespace transactions::server {
                 .done();
             }
 
-            if (new_body.HasMember("receiver") && new_body.HasMember("amount")) {
-                std::string sender = auth::get_username(token, pool_ptr);
-                std::string receiver = new_body["receiver"].GetString();
-                int amount = new_body["amount"].GetInt();
-
-                if (transactions::transfer(sender, receiver, amount, pool_ptr)) {
-                    std::cout << "ok" << std::endl;
+            if (new_body.HasMember("tr_id")) {
+                std::string tr_id = new_body["tr_id"].GetString();
+                std::cout << tr_id << std::endl;
+                logger_ptr->info([token, tr_id] { return fmt::format("token = {}, tr_id = {}", token, tr_id); });
+                switch (transactions::transfer(tr_id, pool_ptr))
+                {
+                case TransactionStatus::Success:
                     return req->create_response()
                         .append_header("Content-Type", "text/plain; charset=utf-8")
                         .set_body("ok")
-                .done();
-                } else {
-                    std::cout << "no money" << std::endl;
-                    return req->create_response()
+                    .done();
+                    break;
+                case TransactionStatus::NoMoney:
+                    return req->create_response(restinio::status_not_acceptable())
                         .append_header("Content-Type", "text/plain; charset=utf-8")
                         .set_body(Comment::giveMe().no_money)
-                .done();
+                    .done();
+                    break;
+                case TransactionStatus::WrongId:
+                    return req->create_response(restinio::status_not_acceptable())
+                        .append_header("Content-Type", "text/plain; charset=utf-8")
+                        .set_body("wrong id")
+                    .done();
+                    break;
+                case TransactionStatus::Error:
+                default:
+                    return req->create_response(restinio::status_internal_server_error())
+                        .append_header("Content-Type", "text/plain; charset=utf-8")
+                        .set_body("internal server error")
+                    .done();
                 }
             } else {
                 return req->create_response(restinio::status_non_authoritative_information())
@@ -103,7 +285,7 @@ namespace transactions::server {
     }
 
     void get_balance(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
-        router.get()->http_get("/transactions/balance/", [pool_ptr, logger_ptr](auto req, auto) {
+        router.get()->http_get("/transactions/balance", [pool_ptr, logger_ptr](auto req, auto) {
             std::string token;
 
             try {

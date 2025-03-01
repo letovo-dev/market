@@ -6,7 +6,15 @@ namespace actives::deals {
     bool DOM::add_bid(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int bid_id, std::string user_name, int price, int amount, actives::active_obj act) {
         int total = price * amount;
         // TODO reciever username
-        if(transactions::transfer(user_name, "scv-7", total,pool_ptr)) {
+        if(transactions::transfer(
+            transactions::prepare_transaction(
+                user_name, 
+                Config::giveMe().market_config.junk_user,
+                total,
+                pool_ptr
+            ).second,
+            pool_ptr
+        ) == transactions::TransactionStatus::Success) {
             bids[price].push(bid(price, bid_id, user_name, act, amount));
             return true;
         }
@@ -67,9 +75,12 @@ namespace actives::deals {
         }
         bid bidToDelete = bids[price].delBid(bid_id);
         transactions::transfer(
-            Config::giveMe().market_config.junk_user, 
-            bidToDelete.owner, 
-            bidToDelete.amount * bidToDelete.price, 
+            transactions::prepare_transaction(
+                Config::giveMe().market_config.junk_user, 
+                bidToDelete.owner, 
+                bidToDelete.amount * bidToDelete.price, 
+                pool_ptr
+            ).second,
             pool_ptr
         );
     }

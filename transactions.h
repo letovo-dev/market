@@ -1,4 +1,8 @@
 #pragma once
+#include <chrono>
+#include <mutex>
+#include <condition_variable>
+#include <unordered_set>
 #include <jwt-cpp/jwt.h>
 #include <restinio/all.hpp>
 #include <pqxx/pqxx>
@@ -14,11 +18,39 @@
 #include <vector>
 
 namespace transactions {
-    bool transfer(std::string sender_username, std::string receiver_username, int amount, std::shared_ptr<cp::ConnectionsManager> pool_ptr);
+    struct TransactionDetails {
+        std::string sender;
+        std::string receiver;
+        std::string amount;
+    };
+
+    enum struct TransactionStatus {
+        NoMoney,
+        WrongId,
+        Error,
+        Success
+    };
+    
+    class RegisteredTransaction {
+        public:
+            RegisteredTransaction();
+            ~RegisteredTransaction();
+            TransactionStatus add_transaction(std::string tr_id, std::shared_ptr<TransactionDetails> tr);
+            TransactionStatus remove_transaction(std::string tr_id);
+            std::shared_ptr<TransactionDetails> get_transaction(std::string tr_id);
+            int size();
+        private:
+            std::unordered_map<std::string, std::shared_ptr<TransactionDetails>> reigstered_transactions;
+            std::mutex mtx;
+    };
+    
+    TransactionStatus transfer(std::string tr_id, std::shared_ptr<cp::ConnectionsManager> pool_ptr);
 
     int get_balance(std::string username, std::shared_ptr<cp::ConnectionsManager> pool_ptr);
 
     pqxx::result get_transactions(std::string username, std::shared_ptr<cp::ConnectionsManager> pool_ptr);
+
+    std::pair<TransactionStatus, std::string> prepare_transaction(std::string sender, std::string reciver, int ammount, std::shared_ptr<cp::ConnectionsManager> pool_ptr);
 } // namespace transactions
 
 namespace transactions::server {
@@ -27,4 +59,6 @@ namespace transactions::server {
     void get_balance(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr);
 
     void get_transactions(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr);
+
+    void prepare_transaction(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr);
 } // namespace transactions::server
