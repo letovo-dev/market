@@ -28,7 +28,8 @@ namespace transactions {
         NoMoney,
         WrongId,
         Error,
-        Success
+        Success,
+        NegativeNumber,
     };
     
     class RegisteredTransaction {

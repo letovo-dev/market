@@ -134,7 +134,9 @@ namespace transactions {
         int balance = get_balance(sender, pool_ptr);
         if (auth::is_rights_by_username(sender, pool_ptr)) {
             balance = 999999999;
-        }
+        } else if(ammount < 0) {
+            return {TransactionStatus::NegativeNumber, ""};
+        } 
         if (balance < ammount) {
             return {TransactionStatus::NoMoney, ""};
         }
@@ -186,7 +188,15 @@ namespace transactions::server {
             if (new_body.HasMember("receiver") && new_body.HasMember("amount")) {
                 std::string sender = auth::get_username(token, pool_ptr);
                 std::string receiver = new_body["receiver"].GetString();
-                int amount = new_body["amount"].GetInt();
+                int amount;
+                try {
+                    amount = new_body["amount"].GetInt();
+                } catch (const std::exception& e) {
+                    return req->create_response(restinio::status_bad_request())
+                        .append_header("Content-Type", "text/plain; charset=utf-8")
+                        .set_body("amount must be an integer")
+                    .done();
+                }
                 auto tr_id = transactions::prepare_transaction(sender, receiver, amount, pool_ptr);
                 switch (tr_id.first)
                 {
@@ -315,7 +325,7 @@ namespace transactions::server {
     }
 
     void get_transactions(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
-        router.get()->http_get("/transactions/get/", [pool_ptr, logger_ptr](auto req, auto) {
+        router.get()->http_get("/transactions/my", [pool_ptr, logger_ptr](auto req, auto) {
             std::string token;
             try {
                 token = req -> header().get_field("Bearer");
