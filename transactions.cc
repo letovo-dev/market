@@ -207,13 +207,13 @@ namespace transactions::server {
                     .done();    
                     break;
                 case TransactionStatus::NoMoney:
-                    return req->create_response(restinio::status_not_acceptable())
+                    return req->create_response(restinio::status_conflict())
                         .append_header("Content-Type", "text/plain; charset=utf-8")
                         .set_body(Comment::giveMe().no_money)
                     .done();
                     break;
                 case TransactionStatus::WrongId:
-                    return req->create_response(restinio::status_not_acceptable())
+                    return req->create_response(restinio::status_not_found())
                         .append_header("Content-Type", "text/plain; charset=utf-8")
                         .set_body("wrong username")
                     .done();
