@@ -188,6 +188,12 @@ namespace transactions::server {
             if (new_body.HasMember("receiver") && new_body.HasMember("amount")) {
                 std::string sender = auth::get_username(token, pool_ptr);
                 std::string receiver = new_body["receiver"].GetString();
+                if(receiver == "") {
+                    return req->create_response(restinio::status_not_acceptable())
+                        .append_header("Content-Type", "text/plain; charset=utf-8")
+                        .set_body("receiver must be a string")
+                    .done();
+                }
                 int amount;
                 try {
                     amount = new_body["amount"].GetInt();
