@@ -30,6 +30,7 @@ namespace transactions {
         Error,
         Success,
         NegativeNumber,
+        NotReciver,
     };
     
     class RegisteredTransaction {
