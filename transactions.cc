@@ -65,12 +65,10 @@ namespace transactions {
 
 
     TransactionStatus transfer(std::string tr_id, std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
-        std::cout << 0 << std::endl;
         auto transaction = registered_transactions.get_transaction(tr_id);
         if(transaction == nullptr) {
             return TransactionStatus::WrongId;
         }
-        std::cout << 1 << std::endl;
         int balance = get_balance(transaction->sender, pool_ptr);
         if (auth::is_rights_by_username(transaction->sender, pool_ptr)) {
             balance = 999999999;
@@ -102,12 +100,10 @@ namespace transactions {
                 }
             )
         };
-        std::cout << 2 << std::endl;
         
         auto r = con -> execute_many(sql_transactions);
 
         pool_ptr->returnConnection(std::move(con));
-        std::cout << 3 << std::endl;
         registered_transactions.remove_transaction(tr_id);
 
         if(r.empty()) {
@@ -167,7 +163,6 @@ namespace transactions::server {
             new_body.Parse(req->body().c_str());
 
             std::string token;
-            std::cout << registered_transactions.size() << std::endl;
             try {
                 token = req -> header().get_field("Bearer");
             } catch (const std::exception& e) {
@@ -264,7 +259,6 @@ namespace transactions::server {
 
             if (new_body.HasMember("tr_id")) {
                 std::string tr_id = new_body["tr_id"].GetString();
-                std::cout << tr_id << std::endl;
                 logger_ptr->info([token, tr_id] { return fmt::format("token = {}, tr_id = {}", token, tr_id); });
                 switch (transactions::transfer(tr_id, pool_ptr))
                 {
@@ -324,7 +318,7 @@ namespace transactions::server {
             std::string username = auth::get_username(token, pool_ptr);
 
             return req->create_response()
-                .append_header("Content-Type", "application/json; charset=utf-8")
+                .append_header("Content-Type", "text/plain; charset=utf-8")
                 .set_body(std::to_string(transactions::get_balance(username, pool_ptr)))
                 .done();
         });
