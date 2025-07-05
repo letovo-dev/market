@@ -163,6 +163,7 @@ namespace actives {
 namespace actives::server {
     void all_public(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
         router.get()->http_get("/actives/all_actives", [pool_ptr, logger_ptr](auto req, auto) {
+            logger_ptr->trace([]{return "called /actives/all_actives";});
             return req->create_response()
                 .append_header("Content-Type", "application/json; charset=utf-8")
                 .set_body(cp::serialize(actives::all_public(pool_ptr)))
@@ -170,8 +171,9 @@ namespace actives::server {
         });
     }
 
-    void active(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
-        router.get()->http_get("/actives/active", [pool_ptr](auto req, auto) {
+    void active(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
+        router.get()->http_get("/actives/active", [pool_ptr, logger_ptr](auto req, auto) {
+            logger_ptr->trace([]{return "called /actives/active";});
             active_obj act;
             if (req -> header().has_field("active_id")) {
                 act.activeId = std::stoi(req -> header().get_field("active_id"));
@@ -190,6 +192,7 @@ namespace actives::server {
 
     void history(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
         router.get()->http_get("/actives/history", [pool_ptr, logger_ptr](auto req, auto) {
+            logger_ptr->trace([]{return "called /actives/history";});
             active_obj act;
 
             if (req -> header().has_field("active_id")) {
@@ -210,6 +213,7 @@ namespace actives::server {
 
     void user_actives(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
         router.get()->http_get("/actives/user_actives", [pool_ptr, logger_ptr](auto req, auto) {
+            logger_ptr->trace([]{return "called /actives/user_actives";});
             std::string user_name;
             try {
                 user_name = req -> header().get_field("user_name");
@@ -226,6 +230,7 @@ namespace actives::server {
 
     void user_history(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
         router.get()->http_get("/actives/user_history", [pool_ptr, logger_ptr](auto req, auto) {
+            logger_ptr->trace([]{return "called /actives/user_history";});
             std::string user_name;
             try {
                 user_name = req -> header().get_field("user_name");

@@ -16,6 +16,7 @@
 #include "../basic/url_parser.h"
 #include "../basic/comment.h"
 #include <vector>
+#include <cstdlib>
 
 namespace transactions {
     struct TransactionDetails {

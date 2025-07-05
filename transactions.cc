@@ -21,6 +21,7 @@ namespace transactions {
         } catch (...) {
             return TransactionStatus::Error;
         }
+
     }
 
     TransactionStatus RegisteredTransaction::remove_transaction(std::string tr_id) {
@@ -143,11 +144,13 @@ namespace transactions {
             )
             + sender
             + reciver
-            + to_string(ammount);
+            + to_string(ammount)
+            + std::to_string(rand() % 10000);
 
         auto con = std::move(pool_ptr->getConnection());
         std::vector<std::string> params = {reciver};
         auto r = con -> execute_params("select * from \"user\" where username=($1);", params, true);
+        pool_ptr->returnConnection(std::move(con));
         if (r.empty()) {
             return {TransactionStatus::WrongId, ""};
         }
@@ -159,6 +162,7 @@ namespace transactions {
 namespace transactions::server {
     void prepare_transaction(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
         router.get()->http_post("/transactions/prepare", [pool_ptr, logger_ptr](auto req, auto) {
+            logger_ptr->trace([]{return "called /transactions/prepare";});
             rapidjson::Document new_body;
             new_body.Parse(req->body().c_str());
 
@@ -237,6 +241,7 @@ namespace transactions::server {
 
     void transfer(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
         router.get()->http_post("/transactions/send", [pool_ptr, logger_ptr](auto req, auto) {
+            logger_ptr->trace([]{return "called /transactions/send";});
             rapidjson::Document new_body;
             new_body.Parse(req->body().c_str());
 
@@ -296,6 +301,7 @@ namespace transactions::server {
 
     void get_balance(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
         router.get()->http_get("/transactions/balance", [pool_ptr, logger_ptr](auto req, auto) {
+            logger_ptr->trace([]{return "called /transactions/balance";});
             std::string token;
 
             try {
@@ -326,6 +332,7 @@ namespace transactions::server {
 
     void get_transactions(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
         router.get()->http_get("/transactions/my", [pool_ptr, logger_ptr](auto req, auto) {
+            logger_ptr->trace([]{return "called /transactions/my";});
             std::string token;
             try {
                 token = req -> header().get_field("Bearer");
