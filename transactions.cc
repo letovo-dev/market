@@ -74,7 +74,7 @@ namespace transactions {
         if (auth::is_rights_by_username(transaction->sender, pool_ptr)) {
             balance = 999999999;
         }
-        if (balance < std::stoi(transaction->amount) || get_balance(transaction->receiver, pool_ptr) + std::stoi(transaction->amount) < 0) {
+        if (balance < std::stoi(transaction->amount) || (get_balance(transaction->receiver, pool_ptr) + std::stoi(transaction->amount) < 0 && std::stoi(transaction->amount) < 0)) {
             return TransactionStatus::NoMoney;
         }
 
@@ -134,7 +134,7 @@ namespace transactions {
         } else if(ammount < 0) {
             return {TransactionStatus::NegativeNumber, ""};
         } 
-        if (balance < ammount || get_balance(reciver, pool_ptr) + ammount < 0) {
+        if (balance < ammount || (get_balance(reciver, pool_ptr) + ammount < 0 && ammount < 0)) {
             return {TransactionStatus::NoMoney, ""};
         }
         std::string tr_id = to_string(
