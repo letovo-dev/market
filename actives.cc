@@ -172,17 +172,21 @@ namespace actives::server {
     }
 
     void active(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
-        router.get()->http_get("/actives/active", [pool_ptr, logger_ptr](auto req, auto) {
+        router.get()->http_get(R"(/actives/active/:id(\d+))", [pool_ptr, logger_ptr](auto req, auto) {
             logger_ptr->trace([]{return "called /actives/active";});
             active_obj act;
-            if (req -> header().has_field("active_id")) {
-                act.activeId = std::stoi(req -> header().get_field("active_id"));
-            } else if (req -> header().has_field("active_ticker")) {
-                act.activeTicker = req -> header().get_field("active_ticker");
-            } else {
-                return req->create_response(restinio::status_non_authoritative_information())
+            
+            return req->create_response()
+                .append_header("Content-Type", "application/json; charset=utf-8")
+                .set_body(cp::serialize(actives::active(pool_ptr, act)))
                 .done();
-            }
+        });
+
+        router.get()->http_get(R"(/actives/active/:ticker([a-zA-Z0-9\-]+))", [pool_ptr, logger_ptr](auto req, auto) {
+            logger_ptr->trace([]{return "called /actives/active";});
+            active_obj act;
+            act.activeTicker = url::get_last_url_arg(req->header().path());
+
             return req->create_response()
                 .append_header("Content-Type", "application/json; charset=utf-8")
                 .set_body(cp::serialize(actives::active(pool_ptr, act)))
@@ -191,19 +195,28 @@ namespace actives::server {
     }
 
     void history(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
-        router.get()->http_get("/actives/history", [pool_ptr, logger_ptr](auto req, auto) {
+        router.get()->http_get(R"(/actives/history/:id(\d+))", [pool_ptr, logger_ptr](auto req, auto) {
             logger_ptr->trace([]{return "called /actives/history";});
             active_obj act;
 
-            if (req -> header().has_field("active_id")) {
-                act.activeId = std::stoi(req -> header().get_field("active_id"));
-            } else if (req -> header().has_field("active_ticker")) {
-                act.activeTicker = req -> header().get_field("active_ticker");
-            } else {
-                return req->create_response(restinio::status_non_authoritative_information())
-                .done();
+            act.activeId = url::last_int_from_url_path(req->header().path());
+            if (act.activeId <= 0) {
+                return req->create_response(restinio::status_bad_request()).done();
             }
+            return req->create_response()
+                .append_header("Content-Type", "application/json; charset=utf-8")
+                .set_body(cp::serialize(actives::active_history(pool_ptr, act)))
+                .done();
+        });
 
+        router.get()->http_get(R"(/actives/history/:ticker([a-zA-Z0-9\-]+))", [pool_ptr, logger_ptr](auto req, auto) {
+            logger_ptr->trace([]{return "called /actives/history";});
+            active_obj act;
+            act.activeTicker = url::get_last_url_arg(req->header().path());
+
+            if (act.activeTicker.empty()) {
+                return req->create_response(restinio::status_bad_request()).done();
+            }
             return req->create_response()
                 .append_header("Content-Type", "application/json; charset=utf-8")
                 .set_body(cp::serialize(actives::active_history(pool_ptr, act)))
@@ -214,16 +227,22 @@ namespace actives::server {
     void user_actives(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
         router.get()->http_get("/actives/user_actives", [pool_ptr, logger_ptr](auto req, auto) {
             logger_ptr->trace([]{return "called /actives/user_actives";});
-            std::string user_name;
+            std::string token;
             try {
-                user_name = req -> header().get_field("user_name");
+                token = req->header().get_field("Bearer");
             } catch (const std::exception& e) {
-                return req->create_response(restinio::status_non_authoritative_information())
+                return req->create_response(restinio::status_unauthorized())
                 .done();
+            } if (token.empty()) {
+                logger_ptr->info([]{return "token is empty";});
+                return req->create_response(restinio::status_unauthorized()).done();
+            } if (!auth::is_user(token, pool_ptr)) {
+                logger_ptr->info([]{return "user is not admin";});
+                return req->create_response(restinio::status_unauthorized()).done();
             }
             return req->create_response()
                 .append_header("Content-Type", "application/json; charset=utf-8")
-                .set_body(cp::serialize(actives::user_actives(pool_ptr, user_name)))
+                .set_body(cp::serialize(actives::user_actives(pool_ptr, auth::get_username(token, pool_ptr))))
                 .done();
         });
     }
@@ -231,16 +250,22 @@ namespace actives::server {
     void user_history(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
         router.get()->http_get("/actives/user_history", [pool_ptr, logger_ptr](auto req, auto) {
             logger_ptr->trace([]{return "called /actives/user_history";});
-            std::string user_name;
+            std::string token;
             try {
-                user_name = req -> header().get_field("user_name");
+                token = req->header().get_field("Bearer");
             } catch (const std::exception& e) {
-                return req->create_response(restinio::status_non_authoritative_information())
+                return req->create_response(restinio::status_unauthorized())
                 .done();
+            } if (token.empty()) {
+                logger_ptr->info([]{return "token is empty";});
+                return req->create_response(restinio::status_unauthorized()).done();
+            } if (!auth::is_user(token, pool_ptr)) {
+                logger_ptr->info([]{return "user is not admin";});
+                return req->create_response(restinio::status_unauthorized()).done();
             }
             return req->create_response()
                 .append_header("Content-Type", "application/json; charset=utf-8")
-                .set_body(cp::serialize(actives::user_history(pool_ptr, user_name)))
+                .set_body(cp::serialize(actives::user_history(pool_ptr, auth::get_username(token, pool_ptr))))
                 .done();
         });
     }

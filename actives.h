@@ -19,11 +19,11 @@ namespace actives {
 
     pqxx::result active_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr,  actives::active_obj act);
 
-    pqxx::result user_actives(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId);
+    pqxx::result user_actives(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::string user_name);
 
-    pqxx::result user_actives(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId, actives::active_obj act);
+    pqxx::result user_actives(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::string user_name, actives::active_obj act);
 
-    pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, int userId);
+    pqxx::result user_history(std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::string user_name);
 
     void add_active(std::shared_ptr<cp::ConnectionsManager> pool_ptr, const std::string user_name, active_obj act);
 }
