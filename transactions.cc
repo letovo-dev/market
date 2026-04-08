@@ -126,6 +126,36 @@ namespace transactions {
         return result;
     }
 
+    std::string last_incoming_outgoing_payments_json(
+        std::string username, std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
+        auto con = std::move(pool_ptr->getConnection());
+        std::vector<std::string> params = {username};
+        pqxx::result result = con->execute_params(
+            R"(SELECT json_build_object(
+                'last_incoming_payment',
+                (
+                    SELECT to_json(t)
+                    FROM "transactions" t
+                    WHERE t.receiver = $1
+                    ORDER BY t.transactionid DESC
+                    LIMIT 1
+                ),
+                'last_outgoing_payment',
+                (
+                    SELECT to_json(t)
+                    FROM "transactions" t
+                    WHERE t.sender = $1
+                    ORDER BY t.transactionid DESC
+                    LIMIT 1
+                )
+            )::text)",
+            params);
+        pool_ptr->returnConnection(std::move(con));
+        if (result.empty() || result[0][0].is_null()) {
+            return R"({"last_incoming_payment":null,"last_outgoing_payment":null})";
+        }
+        return result[0][0].as<std::string>();
+    }
 
     std::pair<TransactionStatus, std::string> prepare_transaction(std::string sender, std::string reciver, int ammount, std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
         int balance = get_balance(sender, pool_ptr);

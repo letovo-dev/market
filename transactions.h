@@ -53,6 +53,10 @@ namespace transactions {
 
     pqxx::result get_transactions(std::string username, std::shared_ptr<cp::ConnectionsManager> pool_ptr);
 
+    /** JSON object: last_incoming_payment, last_outgoing_payment — each is a full transaction row or null. */
+    std::string last_incoming_outgoing_payments_json(
+        std::string username, std::shared_ptr<cp::ConnectionsManager> pool_ptr);
+
     std::pair<TransactionStatus, std::string> prepare_transaction(std::string sender, std::string reciver, int ammount, std::shared_ptr<cp::ConnectionsManager> pool_ptr);
 } // namespace transactions
 
