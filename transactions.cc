@@ -223,15 +223,13 @@ namespace transactions::server {
                         .set_body("receiver not found")
                     .done();
                 }
-                int amount;
-                try {
-                    amount = new_body["amount"].GetInt();
-                } catch (const std::exception& e) {
+                if (!new_body["amount"].IsInt()) {
                     return req->create_response(restinio::status_bad_request())
                         .append_header("Content-Type", "text/plain; charset=utf-8")
                         .set_body("amount must be an integer")
                     .done();
                 }
+                int amount = new_body["amount"].GetInt();
                 auto tr_id = transactions::prepare_transaction(sender, receiver, amount, pool_ptr);
                 switch (tr_id.first)
                 {
