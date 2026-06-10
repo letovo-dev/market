@@ -205,7 +205,7 @@ namespace actives::server {
             }
             return req->create_response()
                 .append_header("Content-Type", "application/json; charset=utf-8")
-                .set_body(cp::serialize(actives::active_history(pool_ptr, act)))
+                .set_body(cp::serialize_with_shift_day(actives::active_history(pool_ptr, act), pool_ptr))
                 .done();
         });
 
@@ -219,7 +219,7 @@ namespace actives::server {
             }
             return req->create_response()
                 .append_header("Content-Type", "application/json; charset=utf-8")
-                .set_body(cp::serialize(actives::active_history(pool_ptr, act)))
+                .set_body(cp::serialize_with_shift_day(actives::active_history(pool_ptr, act), pool_ptr))
                 .done();
         });
     }
@@ -265,7 +265,7 @@ namespace actives::server {
             }
             return req->create_response()
                 .append_header("Content-Type", "application/json; charset=utf-8")
-                .set_body(cp::serialize(actives::user_history(pool_ptr, auth::get_username(token, pool_ptr))))
+                .set_body(cp::serialize_with_shift_day(actives::user_history(pool_ptr, auth::get_username(token, pool_ptr)), pool_ptr))
                 .done();
         });
     }

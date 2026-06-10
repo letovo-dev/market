@@ -383,7 +383,7 @@ namespace transactions::server {
 
             return req->create_response()
                 .append_header("Content-Type", "application/json; charset=utf-8")
-                .set_body(cp::serialize(transactions::get_transactions(username, pool_ptr)))
+                .set_body(cp::serialize_with_shift_day(transactions::get_transactions(username, pool_ptr), pool_ptr))
                 .done();
         });
     }
