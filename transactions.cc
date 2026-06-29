@@ -70,11 +70,10 @@ namespace transactions {
         if(transaction == nullptr) {
             return TransactionStatus::WrongId;
         }
+        int amount = std::stoi(transaction->amount);
         int balance = get_balance(transaction->sender, pool_ptr);
-        if (auth::is_rights_by_username(transaction->sender, pool_ptr)) {
-            balance = 999999999;
-        }
-        if (balance < std::stoi(transaction->amount) || (get_balance(transaction->receiver, pool_ptr) + std::stoi(transaction->amount) < 0 && std::stoi(transaction->amount) < 0)) {
+        bool sender_is_admin = auth::is_rights_by_username(transaction->sender, pool_ptr);
+        if (!can_transfer_amount(balance, amount, sender_is_admin)) {
             return TransactionStatus::NoMoney;
         }
 
@@ -159,12 +158,11 @@ namespace transactions {
 
     std::pair<TransactionStatus, std::string> prepare_transaction(std::string sender, std::string reciver, int ammount, std::shared_ptr<cp::ConnectionsManager> pool_ptr) {
         int balance = get_balance(sender, pool_ptr);
-        if (auth::is_rights_by_username(sender, pool_ptr)) {
-            balance = 999999999;
-        } else if(ammount < 0) {
+        bool sender_is_admin = auth::is_rights_by_username(sender, pool_ptr);
+        if (!sender_is_admin && ammount < 0) {
             return {TransactionStatus::NegativeNumber, ""};
         } 
-        if (balance < ammount || (get_balance(reciver, pool_ptr) + ammount < 0 && ammount < 0)) {
+        if (!can_transfer_amount(balance, ammount, sender_is_admin)) {
             return {TransactionStatus::NoMoney, ""};
         }
         std::string tr_id = to_string(

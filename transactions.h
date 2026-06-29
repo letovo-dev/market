@@ -15,6 +15,7 @@
 #include "../basic/auth.h"
 #include "../basic/url_parser.h"
 #include "../basic/comment.h"
+#include "transaction_rules.h"
 #include <vector>
 #include <cstdlib>
 
