@@ -227,12 +227,9 @@ namespace actives::server {
     void user_actives(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
         router.get()->http_get("/actives/user_actives", [pool_ptr, logger_ptr](auto req, auto) {
             logger_ptr->trace([]{return "called /actives/user_actives";});
-            std::string token;
-            try {
-                token = req->header().get_field("Bearer");
-            } catch (const std::exception& e) {
-                return req->create_response(restinio::status_unauthorized())
-                .done();
+            std::string token = security::bearer_or_cookie_token(req->header());
+            if(token.empty()) {
+                return req->create_response(restinio::status_unauthorized()).done();
             } if (token.empty()) {
                 logger_ptr->info([]{return "token is empty";});
                 return req->create_response(restinio::status_unauthorized()).done();
@@ -250,12 +247,9 @@ namespace actives::server {
     void user_history(std::unique_ptr<restinio::router::express_router_t<>>& router, std::shared_ptr<cp::ConnectionsManager> pool_ptr, std::shared_ptr<restinio::shared_ostream_logger_t> logger_ptr) {
         router.get()->http_get("/actives/user_history", [pool_ptr, logger_ptr](auto req, auto) {
             logger_ptr->trace([]{return "called /actives/user_history";});
-            std::string token;
-            try {
-                token = req->header().get_field("Bearer");
-            } catch (const std::exception& e) {
-                return req->create_response(restinio::status_unauthorized())
-                .done();
+            std::string token = security::bearer_or_cookie_token(req->header());
+            if(token.empty()) {
+                return req->create_response(restinio::status_unauthorized()).done();
             } if (token.empty()) {
                 logger_ptr->info([]{return "token is empty";});
                 return req->create_response(restinio::status_unauthorized()).done();
